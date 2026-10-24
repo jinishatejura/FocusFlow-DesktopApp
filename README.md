@@ -10,8 +10,16 @@
 - **Kanban Board**: Drag & organize tasks across **To Do**, **In Progress**, and **Completed** columns.
 - **List View**: Dense, table-oriented view with quick check-off actions.
 - **Rich Task Metadata**: Categorization (`Project`, `Study`, `DevOps`, `General`), Priorities (`Urgent`, `High`, `Medium`, `Low`), estimated vs. completed Pomodoros, and due dates.
+- **🔁 Recurring Routines & Ongoing Work**:
+  - Repeat schedules: **Daily**, **Weekdays (Mon-Fri)**, or **Weekly**.
+  - Completing a routine automatically calculates and advances the deadline to the next occurrence, tracks an ongoing routine streak (🔥), and resets for the next cycle.
+- **⏰ Task Reminders & Deadline Alerts**:
+  - Background deadline service monitoring approaching deadlines in real time.
+  - Native OS desktop alerts when tasks are due soon (`15m`, `30m`, `1 hour`, `2 hours`, or `1 day` before).
+  - High-priority overdue alerts when deadlines are missed.
+  - Visual urgency badges (🔴 `Overdue`, ⏳ `Due Soon`, 📅 `Due Today`).
 - **Direct Focus Action**: Click **"Focus"** on any task to immediately lock the countdown timer onto that task and track time against it.
-- **Live Search & Filter**: Filter in real-time by keyword, priority, and category.
+- **Live Search & Filter**: Filter in real-time by keyword, priority, category, or schedule type (Routines / Due Soon).
 
 ### 2. ⏱️ Pomodoro Focus Timer
 - **Work & Rest Intervals**: 25 min Focus sprints, 5 min Short Breaks, 15 min Long Breaks (durations customizable in Settings).

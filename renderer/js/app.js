@@ -6,6 +6,7 @@ let appSettings = {};
 let currentViewMode = 'kanban'; // 'kanban' or 'list'
 let activeFilterCategory = 'all';
 let activeFilterPriority = 'all';
+let activeFilterRoutine = 'all';
 let searchQuery = '';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -142,6 +143,7 @@ function setupFilters() {
   const searchInput = document.getElementById('task-search-input');
   const catSelect = document.getElementById('filter-category');
   const prioritySelect = document.getElementById('filter-priority');
+  const routineSelect = document.getElementById('filter-routine');
 
   searchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value.toLowerCase().trim();
@@ -157,6 +159,42 @@ function setupFilters() {
     activeFilterPriority = e.target.value;
     renderTasks();
   });
+
+  if (routineSelect) {
+    routineSelect.addEventListener('change', (e) => {
+      activeFilterRoutine = e.target.value;
+      renderTasks();
+    });
+  }
+}
+
+// Helper to calculate deadline urgency & formatting
+function getDeadlineStatus(task) {
+  if (!task.dueDate) return { status: 'none', label: '', isOverdue: false, isDueSoon: false, isDueToday: false };
+  const timePart = task.dueTime && task.dueTime.includes(':') ? task.dueTime : '23:59';
+  const deadline = new Date(`${task.dueDate}T${timePart}:00`);
+  if (isNaN(deadline.getTime())) return { status: 'none', label: '', isOverdue: false, isDueSoon: false, isDueToday: false };
+
+  const now = new Date();
+  const diffMs = deadline.getTime() - now.getTime();
+
+  if (diffMs < 0) {
+    return { status: 'overdue', label: 'Overdue', isOverdue: true, isDueSoon: false, isDueToday: false };
+  }
+
+  const isToday = deadline.toDateString() === now.toDateString();
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  if (diffHours <= 2) {
+    const mins = Math.max(1, Math.round(diffMs / (1000 * 60)));
+    return { status: 'due-soon', label: `In ${mins}m`, isOverdue: false, isDueSoon: true, isDueToday: isToday };
+  }
+
+  if (isToday) {
+    return { status: 'due-today', label: task.dueTime ? `Today at ${task.dueTime}` : 'Due Today', isOverdue: false, isDueSoon: false, isDueToday: true };
+  }
+
+  return { status: 'upcoming', label: task.dueDate, isOverdue: false, isDueSoon: false, isDueToday: false };
 }
 
 // --- Render Tasks (Kanban & List) ---
@@ -167,7 +205,16 @@ function renderTasks() {
       (task.description && task.description.toLowerCase().includes(searchQuery));
     const matchesCat = activeFilterCategory === 'all' || task.category === activeFilterCategory;
     const matchesPriority = activeFilterPriority === 'all' || task.priority === activeFilterPriority;
-    return matchesSearch && matchesCat && matchesPriority;
+    
+    const dStatus = getDeadlineStatus(task);
+    let matchesRoutine = true;
+    if (activeFilterRoutine === 'recurring') {
+      matchesRoutine = task.repeat && task.repeat !== 'none';
+    } else if (activeFilterRoutine === 'due-soon') {
+      matchesRoutine = dStatus.isOverdue || dStatus.isDueSoon || dStatus.isDueToday;
+    }
+
+    return matchesSearch && matchesCat && matchesPriority && matchesRoutine;
   });
 
   // Update badge count
@@ -219,15 +266,51 @@ function createTaskCard(task) {
   const pomodoros = task.completedPomodoros || 0;
   const estimated = task.estimatedPomodoros || 1;
 
+  // Recurring routine badge
+  let repeatBadgeHtml = '';
+  if (task.repeat && task.repeat !== 'none') {
+    const repMap = { daily: '🔁 Daily', weekdays: '🔁 Mon-Fri', weekly: '🔁 Weekly' };
+    const repLabel = repMap[task.repeat] || '🔁 Repeat';
+    const streakHtml = (task.routineStreak || 0) > 0 ? `<span class="streak-pill" title="Routine Streak">🔥 ${task.routineStreak}</span>` : '';
+    repeatBadgeHtml = `<span class="badge badge-repeat" title="Recurring Routine">${repLabel}</span> ${streakHtml}`;
+  }
+
+  // Deadline urgency badge
+  const dStatus = getDeadlineStatus(task);
+  let deadlineBadgeHtml = '';
+  if (task.status !== 'done') {
+    if (dStatus.status === 'overdue') {
+      deadlineBadgeHtml = `<span class="badge badge-overdue" title="Deadline Missed">🚨 Overdue</span>`;
+    } else if (dStatus.status === 'due-soon') {
+      deadlineBadgeHtml = `<span class="badge badge-due-soon" title="Due in < 2 hours">⏳ ${dStatus.label}</span>`;
+    } else if (dStatus.status === 'due-today') {
+      deadlineBadgeHtml = `<span class="badge badge-due-today">📅 ${dStatus.label}</span>`;
+    }
+  }
+
+  // Due date & time row
+  let deadlineRowHtml = '';
+  if (task.dueDate) {
+    deadlineRowHtml = `
+      <div class="task-deadline-row">
+        <span>🗓️</span>
+        <span>Due: ${task.dueDate}${task.dueTime ? ' at ' + task.dueTime : ''}</span>
+      </div>
+    `;
+  }
+
   card.innerHTML = `
     <div class="task-card-header">
       <div class="task-card-title">${escapeHtml(task.title)}</div>
     </div>
     ${task.description ? `<div class="task-card-desc">${escapeHtml(task.description)}</div>` : ''}
+    ${deadlineRowHtml}
     <div class="task-card-meta">
       <div class="task-badges">
         <span class="badge badge-${task.priority}">${task.priority}</span>
         <span class="badge badge-cat">${task.category}</span>
+        ${repeatBadgeHtml}
+        ${deadlineBadgeHtml}
       </div>
       <div class="task-pomodoros" title="Completed / Estimated Pomodoros">
         <span>🍅</span> ${pomodoros}/${estimated}
@@ -258,8 +341,13 @@ function createTaskCard(task) {
     let nextStatus = 'in-progress';
     if (task.status === 'in-progress') nextStatus = 'done';
     else if (task.status === 'done') nextStatus = 'todo';
-    await window.focusFlowAPI.tasks.update(task.id, { status: nextStatus });
-    showToast(`Task moved to ${nextStatus}`);
+    const updated = await window.focusFlowAPI.tasks.update(task.id, { status: nextStatus });
+
+    if (nextStatus === 'done' && task.repeat && task.repeat !== 'none') {
+      showToast(`🎉 Routine completed! Scheduled next for: ${updated.dueDate} (🔥 Streak: ${updated.routineStreak})`);
+    } else {
+      showToast(`Task moved to ${nextStatus}`);
+    }
   });
 
   card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
@@ -289,20 +377,37 @@ function renderListView(tasks) {
 
   tbody.innerHTML = tasks.map(task => {
     const isDone = task.status === 'done';
+    const dStatus = getDeadlineStatus(task);
+
+    let repeatHtml = '-';
+    if (task.repeat && task.repeat !== 'none') {
+      const repMap = { daily: '🔁 Daily', weekdays: '🔁 Mon-Fri', weekly: '🔁 Weekly' };
+      repeatHtml = `<span class="badge badge-repeat">${repMap[task.repeat] || task.repeat}</span> ${(task.routineStreak || 0) > 0 ? `🔥${task.routineStreak}` : ''}`;
+    }
+
+    let deadlineBadge = '';
+    if (!isDone) {
+      if (dStatus.status === 'overdue') deadlineBadge = `<span class="badge badge-overdue">Overdue</span>`;
+      else if (dStatus.status === 'due-soon') deadlineBadge = `<span class="badge badge-due-soon">${dStatus.label}</span>`;
+      else if (dStatus.status === 'due-today') deadlineBadge = `<span class="badge badge-due-today">Today</span>`;
+    }
+
     return `
       <tr>
         <td>
           <input type="checkbox" ${isDone ? 'checked' : ''} data-toggle-id="${task.id}" style="accent-color: var(--accent-cyan); cursor: pointer;">
         </td>
         <td>
-          <span style="font-weight: 600; text-decoration: ${isDone ? 'line-through' : 'none'}; color: ${isDone ? 'var(--text-muted)' : 'var(--text-primary)'}">
+          <div style="font-weight: 600; text-decoration: ${isDone ? 'line-through' : 'none'}; color: ${isDone ? 'var(--text-muted)' : 'var(--text-primary)'}">
             ${escapeHtml(task.title)}
-          </span>
+          </div>
+          ${deadlineBadge ? `<div style="margin-top: 4px;">${deadlineBadge}</div>` : ''}
         </td>
         <td><span class="badge badge-cat">${task.category}</span></td>
         <td><span class="badge badge-${task.priority}">${task.priority}</span></td>
+        <td>${repeatHtml}</td>
         <td style="font-family: var(--font-mono);">${task.completedPomodoros || 0}/${task.estimatedPomodoros || 1} 🍅</td>
-        <td style="color: var(--text-secondary); font-size: 12px;">${task.dueDate || '-'}</td>
+        <td style="color: var(--text-secondary); font-size: 12px;">${task.dueDate || '-'}${task.dueTime ? ' ' + task.dueTime : ''}</td>
         <td style="text-align: right;">
           <button class="focus-now-btn" data-list-focus="${task.id}">Focus</button>
           <button class="icon-btn" data-list-delete="${task.id}">🗑</button>
@@ -476,7 +581,10 @@ function setupTaskModal() {
       category: document.getElementById('task-form-category').value,
       priority: document.getElementById('task-form-priority').value,
       estimatedPomodoros: parseInt(document.getElementById('task-form-pomodoros').value, 10) || 1,
-      dueDate: document.getElementById('task-form-due').value
+      dueDate: document.getElementById('task-form-due').value,
+      dueTime: document.getElementById('task-form-due-time').value,
+      repeat: document.getElementById('task-form-repeat').value,
+      reminderMinutes: parseInt(document.getElementById('task-form-reminder').value, 10) || 60
     };
 
     if (id) {
@@ -506,10 +614,16 @@ function openTaskModal(task = null) {
     document.getElementById('task-form-priority').value = task.priority || 'medium';
     document.getElementById('task-form-pomodoros').value = task.estimatedPomodoros || 2;
     document.getElementById('task-form-due').value = task.dueDate || '';
+    document.getElementById('task-form-due-time').value = task.dueTime || '';
+    document.getElementById('task-form-repeat').value = task.repeat || 'none';
+    document.getElementById('task-form-reminder').value = task.reminderMinutes || '60';
   } else {
     title.textContent = 'New Task';
     document.getElementById('task-form-id').value = '';
     document.getElementById('task-form-pomodoros').value = 2;
+    document.getElementById('task-form-repeat').value = 'none';
+    document.getElementById('task-form-reminder').value = '60';
+    document.getElementById('task-form-due-time').value = '';
   }
 
   modal.classList.add('active');

@@ -122,6 +122,11 @@
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
+            <select id="filter-routine" class="filter-select">
+              <option value="all">All Schedule Types</option>
+              <option value="recurring">🔁 Recurring Routines</option>
+              <option value="due-soon">⏰ Due Soon / Overdue</option>
+            </select>
           </div>
         </div>
 
@@ -167,6 +172,7 @@
                 <th>Task</th>
                 <th>Category</th>
                 <th>Priority</th>
+                <th>Routine</th>
                 <th>Pomodoros</th>
                 <th>Due Date</th>
                 <th style="text-align: right;">Actions</th>
@@ -402,13 +408,38 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="task-form-pomodoros">Est. Pomodoros (25m each)</label>
-            <input type="number" id="task-form-pomodoros" min="1" max="20" value="2">
-          </div>
-          <div class="form-group">
             <label for="task-form-due">Due Date</label>
             <input type="date" id="task-form-due">
           </div>
+          <div class="form-group">
+            <label for="task-form-due-time">Due Time (Optional)</label>
+            <input type="time" id="task-form-due-time">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-form-repeat">🔁 Repeat Routine</label>
+            <select id="task-form-repeat">
+              <option value="none">No Repeat (One-off)</option>
+              <option value="daily">Every Day (Daily Routine)</option>
+              <option value="weekdays">Mon - Fri (Workday Routine)</option>
+              <option value="weekly">Weekly (Every 7 Days)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="task-form-reminder">🔔 Deadline Alert</label>
+            <select id="task-form-reminder">
+              <option value="15">15 min before deadline</option>
+              <option value="30">30 min before deadline</option>
+              <option value="60" selected>1 hour before deadline</option>
+              <option value="120">2 hours before deadline</option>
+              <option value="1440">1 day before deadline</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="task-form-pomodoros">Est. Pomodoros (25m each)</label>
+          <input type="number" id="task-form-pomodoros" min="1" max="20" value="2">
         </div>
         <div class="modal-actions">
           <button type="button" id="cancel-task-btn" class="btn btn-secondary">Cancel</button>

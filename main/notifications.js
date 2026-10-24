@@ -43,8 +43,24 @@ function notifyBreakEnded(isLongBreak = false) {
   );
 }
 
+function notifyTaskDueSoon(taskTitle, timeText) {
+  return showNotification(
+    '⏳ Task Due Soon',
+    `"${taskTitle}" is due ${timeText}! Keep your focus sharp.`
+  );
+}
+
+function notifyTaskOverdue(taskTitle) {
+  return showNotification(
+    '🚨 Task Deadline Overdue',
+    `"${taskTitle}" has passed its scheduled deadline.`
+  );
+}
+
 module.exports = {
   showNotification,
   notifyFocusCompleted,
-  notifyBreakEnded
+  notifyBreakEnded,
+  notifyTaskDueSoon,
+  notifyTaskOverdue
 };

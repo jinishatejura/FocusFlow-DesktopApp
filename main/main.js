@@ -4,6 +4,7 @@ const { createMainWindow, createWidgetWindow, toggleMainWindow, toggleWidgetWind
 const { initTray } = require('./tray');
 const { registerGlobalShortcuts, unregisterGlobalShortcuts } = require('./shortcuts');
 const { registerIpcHandlers } = require('./ipcHandlers');
+const { startReminderService, stopReminderService } = require('./reminders');
 
 // Enforce single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -85,6 +86,13 @@ if (!gotTheLock) {
       }
     });
 
+    // 6. System-Level Interaction: Task Reminders & Deadline Alerts
+    startReminderService((updatedTasks) => {
+      if (mainWin && !mainWin.isDestroyed()) {
+        mainWin.webContents.send('tasks:updated', updatedTasks);
+      }
+    });
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         createMainWindow();
@@ -104,6 +112,7 @@ if (!gotTheLock) {
 
   app.on('will-quit', () => {
     unregisterGlobalShortcuts();
+    stopReminderService();
     if (trayController) {
       trayController.destroy();
     }

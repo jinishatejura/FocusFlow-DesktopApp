@@ -2,6 +2,31 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 
+function calculateNextDueDate(currentDueDateStr, repeatPattern) {
+  let baseDate = currentDueDateStr ? new Date(currentDueDateStr + 'T00:00:00') : new Date();
+  if (isNaN(baseDate.getTime())) baseDate = new Date();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (baseDate < today) {
+    baseDate = today;
+  }
+
+  const nextDate = new Date(baseDate);
+
+  if (repeatPattern === 'daily') {
+    nextDate.setDate(nextDate.getDate() + 1);
+  } else if (repeatPattern === 'weekdays') {
+    do {
+      nextDate.setDate(nextDate.getDate() + 1);
+    } while (nextDate.getDay() === 0 || nextDate.getDay() === 6);
+  } else if (repeatPattern === 'weekly') {
+    nextDate.setDate(nextDate.getDate() + 7);
+  }
+
+  return nextDate.toISOString().split('T')[0];
+}
+
 class DataStore {
   constructor() {
     this.userDataPath = app ? app.getPath('userData') : path.join(process.cwd(), '.data');
@@ -47,38 +72,56 @@ class DataStore {
     const defaultTasks = [
       {
         id: 'task-1',
-        title: 'Review Electron Desktop APIs',
-        description: 'Check Tray, Global Shortcuts, IPC and Notifications implementation.',
+        title: 'Daily Code Standup & Routine Review',
+        description: 'Review pending pull requests, tickets, and priorities for the day.',
         priority: 'high',
         category: 'Project',
-        status: 'in-progress',
-        estimatedPomodoros: 2,
-        completedPomodoros: 1,
-        dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        status: 'todo',
+        estimatedPomodoros: 1,
+        completedPomodoros: 0,
+        dueDate: new Date().toISOString().split('T')[0],
+        dueTime: '10:00',
+        repeat: 'weekdays',
+        reminderMinutes: 30,
+        notifiedDueSoon: false,
+        notifiedOverdue: false,
+        routineStreak: 3,
         createdAt: new Date().toISOString()
       },
       {
         id: 'task-2',
-        title: 'Prepare Project Presentation',
-        description: 'Outline key architecture, security model, and multi-window design.',
-        priority: 'urgent',
-        category: 'Study',
+        title: 'Weekly Systems & Project Backup',
+        description: 'Run full data backup export and verify archives.',
+        priority: 'medium',
+        category: 'DevOps',
         status: 'todo',
-        estimatedPomodoros: 3,
+        estimatedPomodoros: 2,
         completedPomodoros: 0,
-        dueDate: new Date(Date.now() + 172800000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        dueTime: '18:00',
+        repeat: 'weekly',
+        reminderMinutes: 60,
+        notifiedDueSoon: false,
+        notifiedOverdue: false,
+        routineStreak: 1,
         createdAt: new Date().toISOString()
       },
       {
         id: 'task-3',
-        title: 'Build macOS Executable (.dmg)',
-        description: 'Package app using electron-builder for submission.',
-        priority: 'medium',
-        category: 'DevOps',
-        status: 'todo',
-        estimatedPomodoros: 1,
-        completedPomodoros: 0,
-        dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        title: 'Desktop Application Presentation',
+        description: 'Review IPC architecture, notifications, reminders, and multi-window design.',
+        priority: 'urgent',
+        category: 'Study',
+        status: 'in-progress',
+        estimatedPomodoros: 3,
+        completedPomodoros: 1,
+        dueDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
+        dueTime: '15:00',
+        repeat: 'none',
+        reminderMinutes: 120,
+        notifiedDueSoon: false,
+        notifiedOverdue: false,
+        routineStreak: 0,
         createdAt: new Date().toISOString()
       }
     ];
@@ -101,6 +144,12 @@ class DataStore {
       estimatedPomodoros: parseInt(taskData.estimatedPomodoros, 10) || 1,
       completedPomodoros: 0,
       dueDate: taskData.dueDate || '',
+      dueTime: taskData.dueTime || '',
+      repeat: taskData.repeat || 'none', // none, daily, weekdays, weekly
+      reminderMinutes: parseInt(taskData.reminderMinutes, 10) || 60,
+      notifiedDueSoon: false,
+      notifiedOverdue: false,
+      routineStreak: 0,
       createdAt: new Date().toISOString()
     };
     tasks.unshift(newTask);
@@ -112,9 +161,34 @@ class DataStore {
     const tasks = this.getTasks();
     const index = tasks.findIndex(t => t.id === taskId);
     if (index === -1) return null;
-    tasks[index] = { ...tasks[index], ...updates, updatedAt: new Date().toISOString() };
+
+    let updatedTask = { ...tasks[index], ...updates, updatedAt: new Date().toISOString() };
+
+    // If task was marked 'done' and has a recurring repeat schedule:
+    if (updates.status === 'done' && updatedTask.repeat && updatedTask.repeat !== 'none') {
+      const nextDue = calculateNextDueDate(updatedTask.dueDate, updatedTask.repeat);
+      updatedTask = {
+        ...updatedTask,
+        status: 'todo',
+        dueDate: nextDue,
+        completedPomodoros: 0,
+        notifiedDueSoon: false,
+        notifiedOverdue: false,
+        lastCompletedAt: new Date().toISOString(),
+        routineStreak: (updatedTask.routineStreak || 0) + 1,
+        isRecurringAdvancement: true
+      };
+    }
+
+    // Reset notification flags if user updated the deadline
+    if (updates.dueDate !== undefined || updates.dueTime !== undefined) {
+      updatedTask.notifiedDueSoon = false;
+      updatedTask.notifiedOverdue = false;
+    }
+
+    tasks[index] = updatedTask;
     this.saveTasks(tasks);
-    return tasks[index];
+    return updatedTask;
   }
 
   deleteTask(taskId) {

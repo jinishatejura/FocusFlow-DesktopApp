@@ -2,6 +2,7 @@ const { ipcMain, dialog, shell, app } = require('electron');
 const fs = require('fs');
 const store = require('./store');
 const notifications = require('./notifications');
+const { checkTaskDeadlines } = require('./reminders');
 const { getMainWindow, getWidgetWindow, toggleWidgetWindow } = require('./windows');
 
 function registerIpcHandlers(trayController) {
@@ -12,14 +13,17 @@ function registerIpcHandlers(trayController) {
 
   ipcMain.handle('tasks:add', async (_event, taskData) => {
     const task = store.addTask(taskData);
-    // Broadcast change to both windows
     broadcast('tasks:updated', store.getTasks());
+    // Immediately check reminders
+    checkTaskDeadlines((updated) => broadcast('tasks:updated', updated));
     return task;
   });
 
   ipcMain.handle('tasks:update', async (_event, { id, updates }) => {
     const task = store.updateTask(id, updates);
     broadcast('tasks:updated', store.getTasks());
+    // Immediately check reminders
+    checkTaskDeadlines((updated) => broadcast('tasks:updated', updated));
     return task;
   });
 
