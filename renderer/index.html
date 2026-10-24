@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusFlow</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+  <!-- Frameless Titlebar -->
+  <header class="titlebar">
+    <div class="drag-region">
+      <div class="titlebar-logo">
+        <div class="logo-orb"></div>
+        <span class="app-name">Focus<span class="gradient-text">Flow</span></span>
+      </div>
+    </div>
+    <div class="titlebar-actions no-drag">
+      <button id="toggle-mini-widget-btn" class="titlebar-btn hud-pill" title="Toggle Floating Mini-HUD (Cmd+Alt+W)">
+        <span class="hud-icon">📌</span>
+        <span class="hud-text">Mini HUD</span>
+      </button>
+      <div class="window-controls">
+        <button id="win-min-btn" class="win-btn" title="Minimize">−</button>
+        <button id="win-max-btn" class="win-btn" title="Maximize">□</button>
+        <button id="win-close-btn" class="win-btn close-btn" title="Close">×</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-user">
+        <div class="active-badge-pulse"></div>
+        <div class="sidebar-user-info">
+          <span class="user-status" id="sidebar-timer-status">Idle</span>
+          <span class="user-time" id="sidebar-timer-time">25:00</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="tasks-view">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">Tasks</span>
+          <span class="nav-badge" id="tasks-badge">0</span>
+        </button>
+        <button class="nav-item" data-view="timer-view">
+          <span class="nav-icon">⏱️</span>
+          <span class="nav-label">Focus Timer</span>
+        </button>
+        <button class="nav-item" data-view="analytics-view">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Productivity</span>
+        </button>
+        <button class="nav-item" data-view="settings-view">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-shortcuts-card">
+        <span class="shortcut-title">⚡ Global Hotkeys</span>
+        <div class="shortcut-row">
+          <span>Play/Pause</span>
+          <kbd>⌥⌘F</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Mini HUD</span>
+          <kbd>⌥⌘W</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Quick Task</span>
+          <kbd>⌥⌘N</kbd>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content Workspace -->
+    <main class="main-content">
+      
+      <!-- VIEW 1: TASKS -->
+      <section id="tasks-view" class="view-panel active">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">My Tasks</h1>
+            <p class="view-subtitle">Organize your sprints, track Pomodoros, and stay productive.</p>
+          </div>
+          <div class="header-actions">
+            <div class="view-toggle">
+              <button id="view-mode-kanban" class="view-mode-btn active" title="Kanban Board">Board</button>
+              <button id="view-mode-list" class="view-mode-btn" title="List View">List</button>
+            </div>
+            <button id="open-new-task-btn" class="btn btn-primary">
+              <span class="btn-icon">+</span> New Task
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div class="filters-bar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="task-search-input" placeholder="Search tasks by title, category, priority...">
+          </div>
+          <div class="filter-group">
+            <select id="filter-category" class="filter-select">
+              <option value="all">All Categories</option>
+              <option value="Project">Project</option>
+              <option value="Study">Study</option>
+              <option value="DevOps">DevOps</option>
+              <option value="General">General</option>
+            </select>
+            <select id="filter-priority" class="filter-select">
+              <option value="all">All Priorities</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Kanban Board View -->
+        <div id="kanban-container" class="kanban-container">
+          <!-- Col 1: Todo -->
+          <div class="kanban-col" data-status="todo">
+            <div class="kanban-col-header">
+              <div class="col-indicator todo-indicator"></div>
+              <h3 class="col-title">To Do</h3>
+              <span class="col-count" id="count-todo">0</span>
+            </div>
+            <div class="kanban-list" id="list-todo"></div>
+          </div>
+
+          <!-- Col 2: In Progress -->
+          <div class="kanban-col" data-status="in-progress">
+            <div class="kanban-col-header">
+              <div class="col-indicator inprogress-indicator"></div>
+              <h3 class="col-title">In Progress</h3>
+              <span class="col-count" id="count-inprogress">0</span>
+            </div>
+            <div class="kanban-list" id="list-inprogress"></div>
+          </div>
+
+          <!-- Col 3: Done -->
+          <div class="kanban-col" data-status="done">
+            <div class="kanban-col-header">
+              <div class="col-indicator done-indicator"></div>
+              <h3 class="col-title">Completed</h3>
+              <span class="col-count" id="count-done">0</span>
+            </div>
+            <div class="kanban-list" id="list-done"></div>
+          </div>
+        </div>
+
+        <!-- List View (Initially hidden) -->
+        <div id="list-container" class="list-container" style="display: none;">
+          <table class="tasks-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;"></th>
+                <th>Task</th>
+                <th>Category</th>
+                <th>Priority</th>
+                <th>Pomodoros</th>
+                <th>Due Date</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tasks-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- VIEW 2: FOCUS TIMER -->
+      <section id="timer-view" class="view-panel">
+        <div class="timer-center-wrapper">
+          <!-- Active Task Banner -->
+          <div class="active-task-banner" id="active-task-banner">
+            <span class="active-badge">Active Focus Task</span>
+            <h2 id="current-task-name" class="active-task-title">Free Focus Sprint</h2>
+            <p id="current-task-desc" class="active-task-desc">No task locked. Completed pomodoros count toward general focus.</p>
+          </div>
+
+          <!-- Timer Mode Switcher -->
+          <div class="timer-mode-pills">
+            <button class="mode-pill active" data-mode="focus">Focus (25m)</button>
+            <button class="mode-pill" data-mode="shortBreak">Short Break (5m)</button>
+            <button class="mode-pill" data-mode="longBreak">Long Break (15m)</button>
+          </div>
+
+          <!-- Circular SVG Timer Gauge -->
+          <div class="timer-gauge-container">
+            <svg class="timer-gauge-svg" viewBox="0 0 320 320">
+              <defs>
+                <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8"/>
+                  <stop offset="100%" stop-color="#818cf8"/>
+                </linearGradient>
+                <linearGradient id="break-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#34d399"/>
+                  <stop offset="100%" stop-color="#10b981"/>
+                </linearGradient>
+              </defs>
+              <circle class="gauge-bg" cx="160" cy="160" r="140"></circle>
+              <circle id="gauge-progress" class="gauge-progress" cx="160" cy="160" r="140"></circle>
+            </svg>
+            <div class="timer-display-inner">
+              <span id="timer-time-display" class="timer-time-text">25:00</span>
+              <span id="timer-mode-label" class="timer-mode-caption">FOCUS SESSION</span>
+            </div>
+          </div>
+
+          <!-- Timer Controls -->
+          <div class="timer-controls">
+            <button id="timer-reset-btn" class="btn btn-secondary circle-btn" title="Reset Session">↺</button>
+            <button id="timer-play-btn" class="btn btn-primary play-btn">
+              <span id="timer-play-icon">▶</span>
+              <span id="timer-play-label">Start Focus</span>
+            </button>
+            <button id="timer-skip-btn" class="btn btn-secondary circle-btn" title="Skip to Next">⏭</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: PRODUCTIVITY ANALYTICS -->
+      <section id="analytics-view" class="view-panel">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Productivity Insights</h1>
+            <p class="view-subtitle">Review your focus metrics, completed pomodoro cycles, and streaks.</p>
+          </div>
+          <button id="export-backup-btn" class="btn btn-secondary">
+            <span>💾</span> Export Backup (JSON/CSV)
+          </button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-icon">⏱️</span>
+            <div class="stat-meta">
+              <span class="stat-value" id="stat-total-minutes">0</span>
+              <span class="stat-label">Focus Minutes</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">🎯</span>
+            <div class="stat-meta">
+              <span class="stat-value" id="stat-total-sessions">0</span>
+              <span class="stat-label">Sessions Completed</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">✅</span>
+            <div class="stat-meta">
+              <span class="stat-value" id="stat-tasks-done">0</span>
+              <span class="stat-label">Tasks Finished</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">🔥</span>
+            <div class="stat-meta">
+              <span class="stat-value" id="stat-streak">1 Day</span>
+              <span class="stat-label">Productive Streak</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Sessions Log -->
+        <div class="sessions-card">
+          <h3 class="sessions-header">Recent Focus Sessions</h3>
+          <div class="sessions-list" id="sessions-list">
+            <div class="empty-state">No focus sessions logged yet. Hit Start Focus to begin!</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: SETTINGS & SYSTEM -->
+      <section id="settings-view" class="view-panel">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Settings & System APIs</h1>
+            <p class="view-subtitle">Configure desktop behavior, notifications, audio cues, and local data persistence.</p>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <!-- Focus Durations -->
+          <div class="settings-card">
+            <h3 class="card-heading">⏱️ Timer Durations (Minutes)</h3>
+            <div class="setting-row">
+              <label for="setting-focus-duration">Focus Sprint</label>
+              <input type="number" id="setting-focus-duration" min="1" max="120" value="25">
+            </div>
+            <div class="setting-row">
+              <label for="setting-short-break">Short Break</label>
+              <input type="number" id="setting-short-break" min="1" max="30" value="5">
+            </div>
+            <div class="setting-row">
+              <label for="setting-long-break">Long Break</label>
+              <input type="number" id="setting-long-break" min="1" max="60" value="15">
+            </div>
+          </div>
+
+          <!-- Desktop Notifications & Audio -->
+          <div class="settings-card">
+            <h3 class="card-heading">🔔 System Notifications & Audio</h3>
+            <div class="setting-row">
+              <div>
+                <div class="row-label">Desktop Notifications</div>
+                <div class="row-sub">Trigger native OS notification when focus/break ends</div>
+              </div>
+              <input type="checkbox" id="setting-notifications-toggle" checked>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="row-label">Sound Effects</div>
+                <div class="row-sub">Native bell chime on cycle transitions</div>
+              </div>
+              <input type="checkbox" id="setting-sound-toggle" checked>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="row-label">Minimize to Tray on Close</div>
+                <div class="row-sub">Keep running in the background when window is closed</div>
+              </div>
+              <input type="checkbox" id="setting-tray-close-toggle" checked>
+            </div>
+            <button id="test-notification-btn" class="btn btn-secondary btn-sm" style="margin-top: 10px;">
+              Test Desktop Notification
+            </button>
+          </div>
+
+          <!-- Local Data Persistence -->
+          <div class="settings-card">
+            <h3 class="card-heading">📂 Local Storage & Backups</h3>
+            <p class="card-text">Tasks and analytics are safely stored locally in your OS User Data directory using native filesystem APIs.</p>
+            <div class="storage-actions">
+              <button id="open-data-dir-btn" class="btn btn-secondary">
+                📂 Reveal in Finder
+              </button>
+              <button id="import-backup-btn" class="btn btn-secondary">
+                📥 Import Backup
+              </button>
+            </div>
+          </div>
+
+          <!-- System & App Diagnostics -->
+          <div class="settings-card">
+            <h3 class="card-heading">💻 System Architecture & Telemetry</h3>
+            <div id="system-info-container" class="sys-info-box">
+              Loading system metrics...
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Task Modal (Create & Edit) -->
+  <div id="task-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-title">New Task</h2>
+        <button id="close-modal-btn" class="modal-close-btn">×</button>
+      </div>
+      <form id="task-form">
+        <input type="hidden" id="task-form-id">
+        <div class="form-group">
+          <label for="task-form-title">Task Title *</label>
+          <input type="text" id="task-form-title" placeholder="e.g. Implement IPC layer" required>
+        </div>
+        <div class="form-group">
+          <label for="task-form-description">Description</label>
+          <textarea id="task-form-description" rows="3" placeholder="Add task context or checklist items..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-form-category">Category</label>
+            <select id="task-form-category">
+              <option value="Project">Project</option>
+              <option value="Study">Study</option>
+              <option value="DevOps">DevOps</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="task-form-priority">Priority</label>
+            <select id="task-form-priority">
+              <option value="urgent">🔴 Urgent</option>
+              <option value="high" selected>🟠 High</option>
+              <option value="medium">🟡 Medium</option>
+              <option value="low">🟢 Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-form-pomodoros">Est. Pomodoros (25m each)</label>
+            <input type="number" id="task-form-pomodoros" min="1" max="20" value="2">
+          </div>
+          <div class="form-group">
+            <label for="task-form-due">Due Date</label>
+            <input type="date" id="task-form-due">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="cancel-task-btn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/timer.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

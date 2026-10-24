@@ -1,0 +1,54 @@
+{
+  "name": "focusflow",
+  "version": "1.0.0",
+  "description": "FocusFlow - Pro Desktop Task Manager, Pomodoro Focus Timer, and System-Level Productivity Hub",
+  "main": "main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder -m",
+    "build:mac": "electron-builder --mac",
+    "generate-icons": "node scripts/generate-icons.js"
+  },
+  "keywords": [
+    "electron",
+    "desktop-app",
+    "task-manager",
+    "focus-timer",
+    "pomodoro",
+    "ipc",
+    "multi-window",
+    "tray",
+    "notifications",
+    "shortcuts"
+  ],
+  "author": "Jinisha Tejura",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.focusflow.desktop",
+    "productName": "FocusFlow",
+    "copyright": "Copyright © 2026 Jinisha Tejura",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main/**/*",
+      "preload/**/*",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dir",
+        "dmg",
+        "zip"
+      ],
+      "icon": "renderer/assets/icon.png"
+    }
+  }
+}
